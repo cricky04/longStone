@@ -33,3 +33,8 @@ class CustomDataset(Dataset):
     def get(self, idx):
         data = torch.load(osp.join(self.processed_dir, f'data_{idx}.pt'))
         return data
+    
+def dataLoader(dataRoot, batch_size):
+    dataset = CustomDataset(dataRoot)
+    loader = DataLoader(dataset, batch_size= batch_size, shuffle = True)
+    return loader

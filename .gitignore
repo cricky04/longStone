@@ -1,2 +1,4 @@
 data/*
 notebook/*
+engine/model/__pycache__/*
+engine/__pycache__/*
