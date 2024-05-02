@@ -15,7 +15,7 @@ def BAGenerator(num_nodes, num_edges):
         data: torch_geometry.Data
     '''
     # TODO: add node features
-    baGraph = BAGraph(num_nodes, num_edges)
+    baGraph = BAGraph(num_nodes, num_edges)    
     
     return baGraph()
 
