@@ -1,3 +1,3 @@
 ## test results
 - save type: png (graph)
-- save type: csv (table)
+- save type: csv, pkl (table)

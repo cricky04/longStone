@@ -36,5 +36,5 @@ class CustomDataset(Dataset):
     
 def dataLoader(dataRoot, batch_size):
     dataset = CustomDataset(dataRoot)
-    loader = DataLoader(dataset, batch_size= batch_size, shuffle = True)
+    loader = DataLoader(dataset, batch_size = batch_size, shuffle = True)
     return loader
