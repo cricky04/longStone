@@ -1,43 +1,46 @@
-import torch
-import torch_geometric as pyg
-from torch_geometric.data import Data
+"""
+Implementation of the method proposed in the paper:
+'Adversarial Attacks on Neural Networks for Graph Data'
+by Daniel Zügner, Amir Akbarnejad and Stephan Günnemann,
+published at SIGKDD'18, August 2018, London, UK
+
+Copyright (C) 2018
+Daniel Zügner
+Technical University of Munich
+"""
+
 import numpy as np
 import scipy.sparse as sp
+from nettack import utils
 from numba import jit
 
-class Nettack(torch.nn.Module):
-    def __init__(self,
-               G : Data,
-               W1, 
-               W2, 
-               u,
-               verbose = False):
-        """
-        adj -> G.adj
-        X_obs -> G.x
-        z_obs -> G.y
-        W1 : GCNConv.weight
-        W2 : GCNConv.weight
-        """
+class Nettack:
+    """
+    Nettack class used for poisoning attacks on node classification models.
+    Copyright (C) 2018
+    Daniel Zügner
+    Technical University of Munich
+    """
+
+    def __init__(self, adj, X_obs, z_obs, W1, W2, u, verbose=False):
+
         # Adjacency matrix
-        self.adj = G.adj
+        self.adj = adj.copy().tolil()
         self.adj_no_selfloops = self.adj.copy()
         self.adj_no_selfloops.setdiag(0)
         self.adj_orig = self.adj.copy().tolil()
         self.u = u  # the node being attacked
-        self.adj_preprocessed = self.preprocess_graph(self.adj).tolil()
+        self.adj_preprocessed = utils.preprocess_graph(self.adj).tolil()
         # Number of nodes
-        self.N = G.adj.shape[0]
+        self.N = adj.shape[0]
 
         # Node attributes
-        self.X_obs = G.x
+        self.X_obs = X_obs.copy().tolil()
         self.X_obs_orig = self.X_obs.copy().tolil()
         # Node labels
-        self.z_obs = G.y
+        self.z_obs = z_obs.copy()
         self.label_u = self.z_obs[self.u]
         self.K = np.max(self.z_obs)+1
-        
-        # TODO: GCN -> pyg.gcnconv
         # GCN weight matrices
         self.W1 = W1
         self.W2 = W2
@@ -52,8 +55,7 @@ class Nettack(torch.nn.Module):
         self.influencer_nodes = []
         self.potential_edges = []
         self.verbose = verbose
-        pass
-    
+
     def compute_cooccurrence_constraint(self, nodes):
         """
         Co-occurrence constraint as described in the paper.
@@ -94,6 +96,7 @@ class Nettack(torch.nn.Module):
             scores_matrix[n] = scores
         self.cooc_constraint = sp.csr_matrix(scores_matrix - 0.5 * sd[:, None] > 0)
 
+
     def gradient_wrt_x(self, label):
         """
         Compute the gradient of the logit belonging to the class of the input label with respect to the input features.
@@ -108,8 +111,8 @@ class Nettack(torch.nn.Module):
         np.array [N, D] matrix containing the gradients.
 
         """
-        return self.adj_preprocessed.dot(self.adj_preprocessed)[self.u].T.dot(self.W[:, label].T)
 
+        return self.adj_preprocessed.dot(self.adj_preprocessed)[self.u].T.dot(self.W[:, label].T)
 
     def compute_logits(self):
         """
@@ -167,7 +170,6 @@ class Nettack(torch.nn.Module):
 
         scores = surrogate_loss - grads
         return sorted_ixs[::-1], scores.A1[::-1]
-
 
     def struct_score(self, a_hat_uv, XW):
         """
@@ -268,7 +270,6 @@ class Nettack(torch.nn.Module):
                 return influencer_nodes, additional_influencers
             else:
                 return influencer_nodes
-
 
     def compute_new_a_hat_uv(self, potential_edges):
         """
@@ -445,7 +446,7 @@ class Nettack(torch.nn.Module):
                 # perform edge perturbation
 
                 self.adj[tuple(best_edge)] = self.adj[tuple(best_edge[::-1])] = 1 - self.adj[tuple(best_edge)]
-                self.adj_preprocessed = self.preprocess_graph(self.adj)
+                self.adj_preprocessed = utils.preprocess_graph(self.adj)
 
                 self.structure_perturbations.append(tuple(best_edge))
                 self.feature_perturbations.append(())
@@ -474,14 +475,7 @@ class Nettack(torch.nn.Module):
         self.influencer_nodes = []
         self.potential_edges = []
         self.cooc_constraint = None
-    
-    def preprocess_graph(self, adj):
-        adj_ = adj + sp.eye(adj.shape[0])
-        rowsum = adj_.sum(1).A1
-        degree_mat_inv_sqrt = sp.diags(np.power(rowsum, -0.5))
-        adj_normalized = adj_.dot(degree_mat_inv_sqrt).T.dot(degree_mat_inv_sqrt).tocsr()
-        return adj_normalized
-    
+
 
 @jit(nopython=True)
 def connected_after(u, v, connected_before, delta):
@@ -712,4 +706,3 @@ def filter_singletons(edges, adj):
 
 def filter_chisquare(ll_ratios, cutoff):
     return ll_ratios < cutoff
-
