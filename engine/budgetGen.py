@@ -8,6 +8,7 @@ from tqdm import tqdm
 import pickle
 import warnings
 
+
 warnings.filterwarnings('ignore')
 
 
@@ -41,7 +42,7 @@ if __name__ == "__main__":
     pred = model(dataset.x, dataset.edge_index).argmax(dim = 1)
     minBudget = []
 
-    nCpu = multiprocessing.cpu_count()
+    nCpu = 4
 
     inputs = []
     for d in tqdm(range(len(trainData.x))):
